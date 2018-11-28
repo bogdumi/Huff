@@ -162,6 +162,11 @@ void buildTree(tree *t){
 		findMin(t, i);
 }
 
+// Create tree, then build it
+tree *createTree(int ***data, int ***frequency, int size){
+	
+}
+
 // Program startup
 void startEncode(char *filename){
 	unsigned int height = 0, width = 0;
