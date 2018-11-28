@@ -1,43 +1,76 @@
+// Huffman encoding for image in BMP format
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
 struct pixel{
-    unsigned char r,g,b;
+    unsigned char r, g, b;
 };
 typedef struct pixel pixel;
 
-// Open image to get data
-void openBMP(char *filename, pixel image[541][800], int *height, int *width){
-    char file[14], info[40];
+
+// BMP processing -------------------------------------------------------------
+
+void openPixelsBMP(char *filename, unsigned int height, unsigned int width, pixel image[height][width]){
+	FILE *f = fopen(filename, "rb");
+	unsigned char rubbish;
+	for(int i = 0; i < 54; i++){
+		rubbish = fgetc(f);
+	}
+	for(int i = height - 1; i >= 0; i--){
+        for(int j = 0; j < width; j++){
+            image[i][j].b = fgetc(f);
+            image[i][j].g = fgetc(f);
+            image[i][j].r = fgetc(f);
+        }
+    }	
+    fclose(f);
+	return;
+}
+
+// Open image to get header data
+void openHeaderBMP(char *filename, unsigned int *height, unsigned int *width){
+    char BitmapHeader[14], BitmapInfoHeader[40];
     (*height) = 0;
     (*width) = 0;
     FILE *f = fopen(filename, "rb");
     for(int i = 0; i < 14; i++)
-        file[i] = fgetc(f);
+        BitmapHeader[i] = fgetc(f);
     for(int i = 0; i < 40; i++)
-        info[i] = fgetc(f);
+        BitmapInfoHeader[i] = fgetc(f);
     
-    char heightS[4] = "1", widthS[4] = "1";
-    strcpy(heightS, info + 23);
-    strcpy(widthS, info + 19);
+    (*height) = (BitmapInfoHeader[11] << 24) | 
+    			(BitmapInfoHeader[10] << 16) |
+    			(BitmapInfoHeader[9] << 8)   |
+    			(BitmapInfoHeader[8]);
+    (*width)  = (BitmapInfoHeader[7] << 24) | 
+    			(BitmapInfoHeader[6] << 16) |
+    			(BitmapInfoHeader[5] << 8)  |
+    			(BitmapInfoHeader[4]);
 
-    for(int i = 0; i < 4; i++){
-        (*height) = (*height) * 10 + heightS[i];
-        (*width) = (*width) * 10 + widthS[i];
-    }
 
-    printf("%d %d\n", (*height), (*width));
     fclose(f);
     return;
 }
 
+// Huffman encoding
+
+// Program startup
+void startEncode(char *filename){
+	unsigned int height = 0, width = 0;
+	pixel image[1100][1100];
+	openHeaderBMP(filename, &height, &width);
+	openPixelsBMP(filename, height, width, image);
+
+}
+
 // Testing functions ----------------------------------------------------------
 
-// Create a test BMP ----------------------------------------------------------
-
+// Create a test BMP functions ------------------------------------------------
 // Create Bitmap File Header
 void createBitmapFileHeader(unsigned char *BitmapHeader, int height, int width, int filesize){
     unsigned char BitmapHeaderT [14] = {
@@ -97,9 +130,8 @@ void createBitmapInfoHeader(unsigned char *BitmapInfoHeader, int height, int wid
 // Generate image main function
 void generateBMP(int height, int width){
     pixel image[height][width];
-    int i, j;
-    for(i=0; i<height; i++){
-        for(j=0; j<width; j++){
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j < width; j++){
             image[i][j].r = (unsigned char)((double)i/height*255);             // red
             image[i][j].g = (unsigned char)((double)j/width*255);              // green
             image[i][j].b = (unsigned char)(((double)i+j)/(height+width)*255); // blue
@@ -111,15 +143,15 @@ void generateBMP(int height, int width){
     int filesize = width * height * 3 + 54;
     int datasize = width * height * 3 + height * padSize;
 
-    unsigned char file[14];
-    createBitmapFileHeader(file, height, width, filesize);
-    unsigned char info[40];
-    createBitmapInfoHeader(info, height, width, datasize);
+    unsigned char BitmapHeader[14];
+    createBitmapFileHeader(BitmapHeader, height, width, filesize);
+    unsigned char BitmapInfoHeader[40];
+    createBitmapInfoHeader(BitmapInfoHeader, height, width, datasize);
 
     for(int i = 0; i < 14; i++)
-        fputc(file[i], f);
+        fputc(BitmapHeader[i], f);
     for(int i = 0; i < 40; i++)
-        fputc(info[i], f);
+        fputc(BitmapInfoHeader[i], f);
 
     for(int i = height - 1; i >= 0; i--){
         for(int j = 0; j < width; j++){
@@ -131,20 +163,36 @@ void generateBMP(int height, int width){
     fclose(f);
 }
 
+// Test openHeaderBMP
+void testopenHeaderBMP(){
+	unsigned int height, width;
+
+	generateBMP(100,100);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 100 && width == 100);
+
+	generateBMP(800,100);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 800 && width == 100);
+
+	generateBMP(100,800);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 100 && width == 800);
+
+	generateBMP(1100,1100);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 1100 && width == 1100);
+}
+
 // Test the Huffman encoding
 void test(){
-    pixel image[541][800];
-    int h, w;
-    generateBMP(541, 800);
-    openBMP("image.bmp", image, &h, &w);
+	testopenHeaderBMP();
 }
 
 // Main function --------------------------------------------------------------
 int main(int n, char *args[n]) {
     if (n == 1) test();
-    else if (n == 2) {
-
-    }
+    else if (n == 2) startEncode(args[1]);
     else printf("Use:   ./huff   or   ./huff (file)\n");
     return 0;
 }
