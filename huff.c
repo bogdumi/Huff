@@ -4,6 +4,36 @@
 #include <string.h>
 #include <assert.h>
 
+struct pixel{
+    unsigned char r,g,b;
+};
+typedef struct pixel pixel;
+
+// Open image to get data
+void openBMP(char *filename, pixel image[541][800], int *height, int *width){
+    char file[14], info[40];
+    (*height) = 0;
+    (*width) = 0;
+    FILE *f = fopen(filename, "rb");
+    for(int i = 0; i < 14; i++)
+        file[i] = fgetc(f);
+    for(int i = 0; i < 40; i++)
+        info[i] = fgetc(f);
+    
+    char heightS[4] = "1", widthS[4] = "1";
+    strcpy(heightS, info + 23);
+    strcpy(widthS, info + 19);
+
+    for(int i = 0; i < 4; i++){
+        (*height) = (*height) * 10 + heightS[i];
+        (*width) = (*width) * 10 + widthS[i];
+    }
+
+    printf("%d %d\n", (*height), (*width));
+    fclose(f);
+    return;
+}
+
 // Testing functions ----------------------------------------------------------
 
 // Create a test BMP ----------------------------------------------------------
@@ -33,7 +63,7 @@ void createBitmapInfoHeader(unsigned char *BitmapInfoHeader, int height, int wid
     unsigned char BitmapInfoHeaderT [40] = {
         40,0,0,0, // info hd size
         0,0,0,0, // width
-        0,0,0,0, // heigth
+        0,0,0,0, // height
         1,0, // number color planes
         24,0, // bits per pixel
         0,0,0,0, // compression is none
@@ -66,13 +96,13 @@ void createBitmapInfoHeader(unsigned char *BitmapInfoHeader, int height, int wid
 
 // Generate image main function
 void generateBMP(int height, int width){
-    unsigned char image[height][width][3];
+    pixel image[height][width];
     int i, j;
     for(i=0; i<height; i++){
         for(j=0; j<width; j++){
-            image[i][j][2] = (unsigned char)((double)i/height*255);             // red
-            image[i][j][1] = (unsigned char)((double)j/width*255);              // green
-            image[i][j][0] = (unsigned char)(((double)i+j)/(height+width)*255); // blue
+            image[i][j].r = (unsigned char)((double)i/height*255);             // red
+            image[i][j].g = (unsigned char)((double)j/width*255);              // green
+            image[i][j].b = (unsigned char)(((double)i+j)/(height+width)*255); // blue
         }
     }
 
@@ -93,9 +123,9 @@ void generateBMP(int height, int width){
 
     for(int i = height - 1; i >= 0; i--){
         for(int j = 0; j < width; j++){
-            fputc(image[i][j][0], f);
-            fputc(image[i][j][1], f);
-            fputc(image[i][j][2], f);
+            fputc(image[i][j].b, f);
+            fputc(image[i][j].g, f);
+            fputc(image[i][j].r, f);
         }
     }
     fclose(f);
@@ -103,7 +133,10 @@ void generateBMP(int height, int width){
 
 // Test the Huffman encoding
 void test(){
+    pixel image[541][800];
+    int h, w;
     generateBMP(541, 800);
+    openBMP("image.bmp", image, &h, &w);
 }
 
 // Main function --------------------------------------------------------------
