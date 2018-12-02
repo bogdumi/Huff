@@ -30,13 +30,14 @@ typedef struct tree tree;
 
 // BMP processing -------------------------------------------------------------
 
+// Open the image to get pixel data
 void openPixelsBMP(
-	char *filename, 
-	unsigned int height, 
-	unsigned int width, 
+	char *filename,
+	unsigned int height,
+	unsigned int width,
 	pixel image[height][width]
 	){
-	
+
 		FILE *f = fopen(filename, "rb");
 		unsigned char rubbish;
 		for(int i = 0; i < 54; i++){
@@ -48,7 +49,7 @@ void openPixelsBMP(
             	image[i][j].g = fgetc(f);
             	image[i][j].r = fgetc(f);
         	}
-    	}	
+    	}
     	fclose(f);
 		return;
 }
@@ -63,12 +64,12 @@ void openHeaderBMP(char *filename, unsigned int *height, unsigned int *width){
         BitmapHeader[i] = fgetc(f);
     for(int i = 0; i < 40; i++)
         BitmapInfoHeader[i] = fgetc(f);
-    
-    (*height) = (BitmapInfoHeader[11] << 24) | 
+
+    (*height) = (BitmapInfoHeader[11] << 24) |
     			(BitmapInfoHeader[10] << 16) |
     			(BitmapInfoHeader[9] << 8)   |
     			(BitmapInfoHeader[8]);
-    (*width)  = (BitmapInfoHeader[7] << 24) | 
+    (*width)  = (BitmapInfoHeader[7] << 24) |
     			(BitmapInfoHeader[6] << 16) |
     			(BitmapInfoHeader[5] << 8)  |
     			(BitmapInfoHeader[4]);
@@ -80,8 +81,34 @@ void openHeaderBMP(char *filename, unsigned int *height, unsigned int *width){
 
 // Huffman encoding -----------------------------------------------------------
 
+// Find frequencies of pixels
+int findFreq(
+	unsigned int height,
+	unsigned int width,
+	pixel image[height][width],
+	pixel data[height * width],
+	unsigned short frequency[256][256][256]
+	){
+
+		int d = 0;
+		for(int i = 0; i < 256; i++)
+			for(int j = 0; j < 256; j++)
+				for(int k = 0; k < 256; k++)
+					frequency[i][j][k] = 0;
+
+		for(int i = 0; i < height; i++)
+			for(int j = 0; j < width; j++){
+				if(!frequency[image[i][j].r][image[i][j].g][image[i][j].b]){
+					data[d] = image[i][j];
+					d++;
+				}
+				frequency[image[i][j].r][image[i][j].g][image[i][j].b]++;
+			}
+		return d;
+}
+
 // Allocate a new node
-node *newNode(pixel data, unsigned int freq){
+node *newNode(pixel data, unsigned short freq){
 	node *n = malloc(sizeof(node));
 	n -> data = data;
 	n -> left = NULL;
@@ -125,6 +152,20 @@ void findMin(tree *t, int n){
 	}
 }
 
+// Print codes to file
+void printCode(unsigned int *array, int n, node *nd, FILE *f){
+	
+	char d[20] = "";
+	int num = sprintf(d, "%d, %d, %d: ", nd -> data.r, nd -> data.g, nd -> data.b);
+	if(num > 0){
+		for(int i = 0; d[i] != '\0'; i++)
+			fputc(d[i], f);
+		for(int i = 0; i < n; i++)
+			fputc(array[i] + '0', f);
+		fputc('\n', f);
+	}
+}
+
 // Check if we only have 1 node left
 bool endNode(tree *t){
 	return (t -> size == 1);
@@ -155,7 +196,7 @@ void insertNode(tree *t, node *n){
 	t -> array[i] = n;
 }
 
-// Build a tree
+// Build a tree from bottom up
 void buildTree(tree *t){
 	int i, n = t -> size - 1;
 	for(i = (n - 1) / 2; i >= 0; i--)
@@ -163,17 +204,77 @@ void buildTree(tree *t){
 }
 
 // Create tree, then build it
-tree *createTree(int ***data, int ***frequency, int size){
-	
+tree *createTree(pixel *data, unsigned short frequency[256][256][256], int size){
+	tree *t = newTree(size);
+	for(int i = 0; i < size; i++)
+		t -> array[i] = newNode(data[i], frequency[data -> r][data -> g][data -> b]);
+	t -> size = size;
+	buildTree(t);
+	return t;
+}
+
+// Huffman tree algorithm
+node *huffmanTree(pixel *data, unsigned short frequency[256][256][256], int size){
+	node *left, *right, *top;
+	tree *t = createTree(data, frequency, size);
+	pixel p;
+	p.r = p.g = p.b = 0;
+
+	while(!endNode(t)){
+		left = getMin(t);
+		right = getMin(t);
+		top = newNode(p, left->freq + right->freq);
+
+		top -> left = left;
+		top -> right = right;
+
+		insertNode(t, top);
+	}
+    return getMin(t);
+}
+
+// Print Huffman Codes given a root node
+void printHuffCode(node *root, unsigned int *array, int top, FILE *f){
+	if(root -> left){
+		array[top] = 0;
+		printHuffCode(root -> left, array, top + 1, f);
+	}
+	if(root -> right){
+		array[top] = 1;
+		printHuffCode(root -> right, array, top + 1, f);
+	}
+	if(isLeaf(root)){
+		printCode(array, top, root, f);
+	}
+}
+
+// Traverse the tree and print the Huffman Codes
+void huffmanCode(pixel *data, unsigned short frequency[256][256][256], int size){
+	node *root = huffmanTree(data, frequency, size);
+	unsigned int array[1000 * 1000], top = 0;
+
+	FILE *f = fopen("output.txt", "w");
+	printHuffCode(root, array, top, f);
+	fclose(f);
 }
 
 // Program startup
 void startEncode(char *filename){
 	unsigned int height = 0, width = 0;
-	pixel image[1100][1100];
 	openHeaderBMP(filename, &height, &width);
+
+	unsigned short (*frequency)[256][256];
+    frequency = malloc(256 * sizeof(*frequency));
+
+	pixel image[height][width], data[height * width];
+
 	openPixelsBMP(filename, height, width, image);
 
+	int uniquePixels = findFreq(height, width, image, data, frequency);
+
+	huffmanCode(data, frequency, uniquePixels);
+
+    free(frequency);
 }
 
 // Testing functions ----------------------------------------------------------
@@ -181,9 +282,9 @@ void startEncode(char *filename){
 // Create a test BMP functions ------------------------------------------------
 // Create Bitmap File Header
 void createBitmapFileHeader(
-	unsigned char *BitmapHeader, 
-	int height, 
-	int width, 
+	unsigned char *BitmapHeader,
+	int height,
+	int width,
 	int filesize
 	){
     	unsigned char BitmapHeaderT [14] = {
@@ -206,23 +307,23 @@ void createBitmapFileHeader(
 
 // Create Bitmap Info Header
 void createBitmapInfoHeader(
-	unsigned char 
-	*BitmapInfoHeader, 
-	int height, 
-	int width, 
+	unsigned char
+	*BitmapInfoHeader,
+	int height,
+	int width,
 	int datasize){
     	unsigned char BitmapInfoHeaderT [40] = {
-        	40,0,0,0, // info hd size
-        	0,0,0,0, // width
-        	0,0,0,0, // height
-        	1,0, // number color planes
-        	24,0, // bits per pixel
-        	0,0,0,0, // compression is none
-        	0,0,0,0, // image bits size
-        	0x13,0x0B,0,0, // horz resoluition in pixel / m
-        	0x13,0x0B,0,0, // vert resolutions (0x03C3 = 96 dpi, 0x0B13 = 72 dpi)
-        	0,0,0,0, // #colors in pallete
-        	0,0,0,0, // #important colors
+        	40,0,0,0,
+        	0,0,0,0,
+        	0,0,0,0,
+        	1,0,
+        	24,0,
+        	0,0,0,0,
+        	0,0,0,0,
+        	0x13,0x0B,0,0,
+        	0x13,0x0B,0,0,
+        	0,0,0,0,
+        	0,0,0,0,
     	};
 
     	BitmapInfoHeaderT[4] = (unsigned char)(width);
@@ -250,9 +351,9 @@ void generateBMP(int height, int width){
     pixel image[height][width];
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
-            image[i][j].r = (unsigned char)((double)i/height*255);             // red
-            image[i][j].g = (unsigned char)((double)j/width*255);              // green
-            image[i][j].b = (unsigned char)(((double)i+j)/(height+width)*255); // blue
+            image[i][j].r = (unsigned char)((double)i/height*255);
+            image[i][j].g = (unsigned char)((double)j/width*255);
+            image[i][j].b = (unsigned char)(((double)i+j)/(height+width)*255);
         }
     }
 
@@ -297,9 +398,9 @@ void testopenHeaderBMP(){
 	openHeaderBMP("image.bmp", &height, &width);
 	assert(height == 100 && width == 800);
 
-	generateBMP(1100,1100);
+	generateBMP(600,600);
 	openHeaderBMP("image.bmp", &height, &width);
-	assert(height == 1100 && width == 1100);
+	assert(height == 600 && width == 600);
 }
 
 // Test newNode
@@ -361,7 +462,7 @@ void testswapNodes(){
 	assert(n1 -> data.r == 100 && n1 -> data.g == 100 && n1 -> data.b == 100);
 }
 
-// Test the Huffman encoding
+// Test functions
 void test(){
 	testopenHeaderBMP();
 	testnewNode();
