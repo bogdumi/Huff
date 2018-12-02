@@ -382,6 +382,14 @@ void generateBMP(int height, int width){
     fclose(f);
 }
 
+void generateCustomBMP(char *height, char *width){
+	int h = atoi(height), w = atoi(width);
+	if(w % 4 == 0)
+		generateBMP(h,w);
+	else
+		printf("The width must be a multiple of 4.\n");
+}
+
 // Test openHeaderBMP
 void testopenHeaderBMP(){
 	unsigned int height, width;
@@ -474,6 +482,7 @@ void test(){
 int main(int n, char *args[n]) {
     if (n == 1) test();
     else if (n == 2) startEncode(args[1]);
-    else printf("Use:   ./huff   or   ./huff (file)\n");
+    else if (n == 4 && !strcmp(args[1], "generate")) generateCustomBMP(args[2], args[3]);
+    else printf("Use:   ./huff   or   ./huff (file)   or   ./huff generate (height) (width)\n");
     return 0;
 }
