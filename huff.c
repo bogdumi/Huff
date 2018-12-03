@@ -293,11 +293,11 @@ void createBitmapFileHeader(
 	int filesize
 	){
     	unsigned char BitmapHeaderT [14] = {
-        	'B','M', // magic
-        	0,0,0,0, // size in bytes
-        	0,0, // app data
-        	0,0, // app data
-        	40+14,0,0,0 // start of data offset
+        	'B','M',
+        	0,0,0,0,
+        	0,0,
+        	0,0,
+        	40+14,0,0,0
     	};
 
     	BitmapHeaderT[2] = (unsigned char)(filesize);
@@ -419,6 +419,21 @@ void testopenHeaderBMP(){
 	openHeaderBMP("image.bmp", &height, &width);
 	assert(height == 100 && width == 800);
 
+	generateBMP(541,800);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 541 && width == 800);
+
+	generateBMP(800,541);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 800 && width == 541);
+
+	generateBMP(100,300);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 100 && width == 300);
+
+	generateBMP(300,100);
+	openHeaderBMP("image.bmp", &height, &width);
+	assert(height == 300 && width == 100);
 	
 	generateBMP(100,100);
 	openHeaderBMP("image.bmp", &height, &width);
@@ -451,6 +466,18 @@ void testnewNode(){
 	p.b = 255;
 	node *n4 = newNode(p, 10);
 	assert (n4 != NULL);
+
+	p.r = 50;
+	p.g = 50;
+	p.b = 50;
+	node *n5 = newNode(p, 10);
+	assert (n5 != NULL);
+
+	p.r = 150;
+	p.g = 150;
+	p.b = 150;
+	node *n6 = newNode(p, 10);
+	assert (n6 != NULL);
 }
 
 // Test newTree
@@ -466,6 +493,9 @@ void testnewTree(){
 
 	tree *t4 = newTree(1000);
 	assert (t4 != NULL);
+
+	tree *t5 = newTree(10000);
+	assert (t5 != NULL);
 }
 
 // Test swapNodes
@@ -482,6 +512,18 @@ void testswapNodes(){
 	swapNodes(&n1, &n2);
 	assert(n2 -> data.r == 0 && n2 -> data.g == 0 && n2 -> data.b == 0);
 	assert(n1 -> data.r == 100 && n1 -> data.g == 100 && n1 -> data.b == 100);
+
+	p.r = 50;
+	p.g = 50;
+	p.b = 50;
+	node *n3 = newNode(p, 10);
+	p.r = 120;
+	p.g = 120;
+	p.b = 120;
+	node *n4 = newNode(p, 5);
+	swapNodes(&n3, &n4);
+	assert(n4 -> data.r == 50 && n4 -> data.g == 50 && n4 -> data.b == 50);
+	assert(n3 -> data.r == 120 && n3 -> data.g == 120 && n3 -> data.b == 120);
 }
 
 // Test functions
