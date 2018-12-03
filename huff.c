@@ -6,6 +6,7 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include <limits.h>
 
 // Stores RGB values of a pixel
 struct pixel{
@@ -263,18 +264,22 @@ void startEncode(char *filename){
 	unsigned int height = 0, width = 0;
 	openHeaderBMP(filename, &height, &width);
 
-	unsigned short (*frequency)[256][256];
-    frequency = malloc(256 * sizeof(*frequency));
+	if(height * width > 600 * 600)
+		printf("Please try encoding a smaller image.\n");
+	else {
+		unsigned short (*frequency)[256][256];
+    	frequency = malloc(256 * sizeof(*frequency));
 
-	pixel image[height][width], data[height * width];
+		pixel image[height][width], data[height * width];
 
-	openPixelsBMP(filename, height, width, image);
+		openPixelsBMP(filename, height, width, image);
 
-	int uniquePixels = findFreq(height, width, image, data, frequency);
+		int uniquePixels = findFreq(height, width, image, data, frequency);
 
-	huffmanCode(data, frequency, uniquePixels);
+		huffmanCode(data, frequency, uniquePixels);
 
-    free(frequency);
+    	free(frequency);
+	}
 }
 
 // Testing functions ----------------------------------------------------------
@@ -349,6 +354,9 @@ void createBitmapInfoHeader(
 // Generate image main function
 void generateBMP(int height, int width){
     pixel image[height][width];
+    int extrabytes = 0;
+    if(width % 4)
+    	extrabytes = (4 - ((width * 3) % 4) % 4); 
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
             image[i][j].r = (unsigned char)((double)i/height*255);
@@ -378,25 +386,30 @@ void generateBMP(int height, int width){
             fputc(image[i][j].g, f);
             fputc(image[i][j].r, f);
         }
+        if(extrabytes)
+        	for(int n = 0; n < extrabytes; n++)
+        		fputc(0, f);
     }
     fclose(f);
 }
 
 void generateCustomBMP(char *height, char *width){
 	int h = atoi(height), w = atoi(width);
-	if(w % 4 == 0)
-		generateBMP(h,w);
+	int p = h * w, max_res = 2788900;
+	if(p > max_res)
+		printf("Please enter lower values for the height and the width.\n");
 	else
-		printf("The width must be a multiple of 4.\n");
+		generateBMP(h,w);
+	return;	
 }
 
 // Test openHeaderBMP
 void testopenHeaderBMP(){
 	unsigned int height, width;
 
-	generateBMP(100,100);
+	generateBMP(600,600);
 	openHeaderBMP("image.bmp", &height, &width);
-	assert(height == 100 && width == 100);
+	assert(height == 600 && width == 600);
 
 	generateBMP(800,100);
 	openHeaderBMP("image.bmp", &height, &width);
@@ -406,9 +419,10 @@ void testopenHeaderBMP(){
 	openHeaderBMP("image.bmp", &height, &width);
 	assert(height == 100 && width == 800);
 
-	generateBMP(600,600);
+	
+	generateBMP(100,100);
 	openHeaderBMP("image.bmp", &height, &width);
-	assert(height == 600 && width == 600);
+	assert(height == 100 && width == 100);
 }
 
 // Test newNode
