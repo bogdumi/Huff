@@ -4,7 +4,7 @@
 
 ## Install
 
-A Makefile is included in the repo with the necessary flags, and it will work on Windows, MacOS and any Linux distro, so just type `make` in the console in the folder with the `huff.c` source file.
+A Makefile is included in the repo with the necessary flags, and it will work on Windows, MacOS and any Linux distro, so just type `make` in the console, in the folder with the `huff.c` source file.
 
 ## Running
 
