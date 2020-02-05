@@ -4,9 +4,9 @@
 
 ## Install
 
-A Makefile is included in the repo with the necessary flags, and it will work on Windows, MacOS and any Linux distro, so just type `make` in the console, in the folder with the `huff.c` source file.
+A Makefile is included and contains the necessary flags. It will work on Windows, MacOS and any Linux distro, so just type `make` in the console, in the folder with the `huff.c` source file.
 
-## Running
+## Running & Testing
 
 The program can be run with:
 - `./huff` for testing (also generates a 100x100 BMP image)
@@ -19,10 +19,10 @@ Each pixel in the image generated during testing has a unique RGB value, so the 
 
 The only limitation this program has is with very high values for height\*width, which can cause a stack overflow. I've limited the product at 1670\*1670 for generating an image (so that it can still generate a 1080x1920 image, for a 1080p wallpaper, for example) and at 600\*600 for the Huffman encoding itself.
 
-## Resources used:
+## Resources used/reference:
 
 Bitmap image information: https://web.archive.org/web/20080912171714/http://www.fortunecity.com/skyscraper/windows/364/bmpffrmt.html
 
-Bitmap image processing: https://en.wikipedia.org/wiki/Bitmap, https://stackoverflow.com/questions/2654480/writing-bmp-image-in-pure-c-c-without-other-libraries
+Bitmap image processing: https://en.wikipedia.org/wiki/Bitmap
 
 Huffman algorithm: https://en.wikipedia.org/wiki/Huffman_coding, https://www.geeksforgeeks.org/huffman-coding-greedy-algo-3/
